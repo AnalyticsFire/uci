@@ -188,11 +188,10 @@ uci_alloc_section(struct uci_package *p, const char *type, const char *name)
 	if (name && !name[0])
 		name = NULL;
 
-	s = uci_alloc_element(ctx, section, name, strlen(type) + 1);
+	s = uci_alloc_element(ctx, section, name, 0);
 	uci_list_init(&s->options);
-	s->type = uci_dataptr(s);
+	s->type = uci_strdup(ctx, type);
 	s->package = p;
-	strcpy(s->type, type);
 	if (name == NULL)
 		s->anonymous = true;
 	p->n_section++;
@@ -701,17 +700,9 @@ int uci_set(struct uci_context *ctx, struct uci_ptr *ptr)
 		ptr->o = uci_alloc_option(ptr->s, ptr->option, ptr->value);
 		ptr->last = &ptr->o->e;
 	} else if (ptr->s && ptr->section) { /* update section */
-		char *s = uci_strdup(ctx, ptr->value);
-
-		if (ptr->s->type == uci_dataptr(ptr->s)) {
-			ptr->last = NULL;
-			ptr->last = uci_realloc(ctx, ptr->s, sizeof(struct uci_section));
-			ptr->s = uci_to_section(ptr->last);
-			uci_list_fixup(&ptr->s->e.list);
-		} else {
-			free(ptr->s->type);
-		}
-		ptr->s->type = s;
+		ptr->last = &ptr->s->e;
+		free(ptr->s->type);
+		ptr->s->type = uci_strdup(ctx, ptr->value);
 	} else {
 		UCI_THROW(ctx, UCI_ERR_INVAL);
 	}
